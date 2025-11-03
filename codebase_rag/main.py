@@ -484,10 +484,10 @@ def _handle_chat_images(question: str, project_root: Path) -> str:
 
 
 def get_multiline_input(prompt_text: str = "Ask a question") -> str:
-    """Get multiline input from user with Ctrl+J to submit."""
+    """Get multiline input from user with Ctrl+S to submit."""
     bindings = KeyBindings()
 
-    @bindings.add("c-j")
+    @bindings.add("c-s")
     def submit(event: Any) -> None:
         """Submit the current input."""
         event.app.exit(result=event.app.current_buffer.text)
@@ -508,7 +508,7 @@ def get_multiline_input(prompt_text: str = "Ask a question") -> str:
     # Display the colored prompt first
     print_formatted_text(
         HTML(
-            f"<ansigreen><b>{clean_prompt}</b></ansigreen> <ansiyellow>(Press Ctrl+J to submit, Enter for new line)</ansiyellow>: "
+            f"<ansigreen><b>{clean_prompt}</b></ansigreen> <ansiyellow>(Press Ctrl+S to submit, Enter for new line)</ansiyellow>: "
         )
     )
 

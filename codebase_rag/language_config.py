@@ -393,6 +393,20 @@ PHP_FQN_CONFIG = FQNConfig(
     file_to_module_parts=_generic_file_to_module,
 )
 
+C_FQN_CONFIG = FQNConfig(
+    scope_node_types={
+        "struct_specifier",
+        "union_specifier",
+        "translation_unit",
+    },
+    function_node_types={
+        "function_definition",
+        "function_declarator",
+    },
+    get_name=_cpp_get_name,
+    file_to_module_parts=_generic_file_to_module,
+)
+
 LANGUAGE_FQN_CONFIGS = {
     "python": PYTHON_FQN_CONFIG,
     "javascript": JAVASCRIPT_FQN_CONFIG,
@@ -400,6 +414,7 @@ LANGUAGE_FQN_CONFIGS = {
     "rust": RUST_FQN_CONFIG,
     "java": JAVA_FQN_CONFIG,
     "cpp": CPP_FQN_CONFIG,
+    "c": C_FQN_CONFIG,
     "lua": LUA_FQN_CONFIG,
     "go": GO_FQN_CONFIG,
     "scala": SCALA_FQN_CONFIG,
@@ -757,6 +772,39 @@ LANGUAGE_CONFIGS = {
         module_node_types=["chunk"],
         call_node_types=["function_call"],
         import_node_types=["function_call"],
+    ),
+    "c": create_lang_config(
+        file_extensions=[".c", ".h"],
+        function_node_types=[
+            "function_definition",
+            "function_declarator",
+        ],
+        class_node_types=[
+            "struct_specifier",
+            "union_specifier",
+            "enum_specifier",
+        ],
+        module_node_types=["translation_unit"],
+        call_node_types=[
+            "call_expression",
+            "field_expression",
+        ],
+        import_node_types=["preproc_include"],
+        import_from_node_types=["preproc_include"],
+        package_indicators=["Makefile", "CMakeLists.txt"],
+        function_query="""
+        (function_definition) @function
+        (function_declarator) @function
+        """,
+        class_query="""
+        (struct_specifier) @class
+        (union_specifier) @class
+        (enum_specifier) @class
+        """,
+        call_query="""
+        (call_expression) @call
+        (field_expression) @call
+        """,
     ),
 }
 

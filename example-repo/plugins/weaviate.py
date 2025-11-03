@@ -9,8 +9,9 @@ from plugins.config import COLLECTION_NAME
 
 class QueryLibraryPlugin:
     
-    def __init__(self,  embeddings_client: EmbeddingsClient):
+    def __init__(self,  embeddings_client: EmbeddingsClient, vectorstore):
         self.embeddings_client = embeddings_client
+        self.vectorstore = vectorstore
         self.logger = logging.getLogger(__name__)
 
     async def get_query_suggestions(
@@ -35,38 +36,29 @@ class QueryLibraryPlugin:
             # Generate embedding for the query purpose
             embedded_question = await self.embeddings_client.get_embedding(query_purpose)
 
-            # Connect to Weaviate and perform vector search
-            with connect_to_local() as client:
+            # Ensure collection exists
+            if not self.vectorstore.exists(COLLECTION_NAME):
+                return {
+                    "error": f"Collection '{COLLECTION_NAME}' does not exist, please make sure to populate it with query examples.",
+                    "queries": []
+                }
 
-                if not client.collections.exists(COLLECTION_NAME):
-                    return {
-                        "error": f"Collection '{COLLECTION_NAME}' does not exist, please make sure to populate it with query examples.",
-                        "queries": []
-                    }
+            # Perform vector search
+            result = self.vectorstore.query_nearest(COLLECTION_NAME, embedded_question[0], limit=3)
 
-                queries_collection = client.collections.get(COLLECTION_NAME)
-                
-                # Perform vector search
-                result = queries_collection.query.near_vector(
-                    near_vector=embedded_question[0],
-                    limit=3,
-                    return_metadata=MetadataQuery(distance=True)
+            queries = []
+            for obj in result:
+                dashboard_query = DashboardQuery(
+                    id=obj.get("id", ""),
+                    title=obj.get("title", ""),
+                    description=obj.get("description", ""),
+                    query=obj.get("query", "")
                 )
-                
-                queries = []
-                for obj in result.objects:
-                    properties = obj.properties
-                    dashboard_query = DashboardQuery(
-                        id=properties.get("id", ""),
-                        title=properties.get("title", ""),
-                        description=properties.get("description", ""),
-                        query=properties.get("query", "")
-                    )
-                    queries.append(dashboard_query)
+                queries.append(dashboard_query)
 
-                    self.logger.info(f"Found query candidate: {dashboard_query.title} - {dashboard_query.description} (distance: {obj.metadata.distance})")
+                self.logger.info(f"Found query candidate: {dashboard_query.title} - {dashboard_query.description} (distance: {obj.get('distance')})")
 
-                return {"queries": queries}
+            return {"queries": queries}
             
         except Exception as e:
             self.logger.error(f"Error while searching for queries: {e}")

@@ -39,36 +39,45 @@ async def get_completion(prompt: str, text: str, max_tokens: int = 300):
 
 
 def create_index_entries(items):
-    return [DataObject(
-        properties={
-            "title": i["title"],
-            "description":   i["description"],
-            "query": i["query"],
-        },
-        vector=i["vector"], 
-    )
-    for i in items
+    # Convert items to plain dicts expected by the VectorStore adapters
+    return [
+        {
+            "title": i.get("title", ""),
+            "description": i.get("description", ""),
+            "query": i.get("query", ""),
+            "vector": i.get("vector", None),
+        }
+        for i in items
     ]
 
-def index_queries(items):
-    with weaviate.connect_to_local() as client:
 
-        client.collections.delete("FinOpsHubQueries")
+def index_queries(items, vectorstore=None):
+    # Use provided vectorstore or default to Weaviate local client
+    if vectorstore is None:
+        from plugins.vectorstore import WeaviateAdapter
+        vectorstore = WeaviateAdapter()
 
-        collection = client.collections.create(
-            name="FinOpsHubQueries",
-            vectorizer_config=Configure.Vectorizer.none(),
-            properties=[
-                Property(name="title", data_type=DataType.TEXT),
-                Property(name="description", data_type=DataType.TEXT),
-                Property(name="query", data_type=DataType.TEXT)
-            ], 
-        )
+    # Remove existing collection and recreate
+    vectorstore.delete_collection(COLLECTION_NAME)
+    vectorstore.create_collection(
+        COLLECTION_NAME,
+        properties_schema=None,
+    )
 
-        collection.data.insert_many(items)
+    # Insert items
+    vectorstore.insert_many(COLLECTION_NAME, items)
 
-        for item in collection.iterator():
-            print(item.uuid, item.properties)
+    # Print out items for verification if the adapter supports iteration
+    try:
+        for item in vectorstore.get_collection_iterator(COLLECTION_NAME):
+            # Weaviate iterator yields objects with uuid and properties
+            try:
+                print(getattr(item, 'uuid', None), getattr(item, 'properties', None))
+            except Exception:
+                print(item)
+    except Exception:
+        # Not all adapters may support direct iteration; ignore
+        pass
 
 async def parse_dashboard():
     

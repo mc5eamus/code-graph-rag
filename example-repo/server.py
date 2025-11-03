@@ -21,7 +21,10 @@ embeddings_client = EmbeddingsClient(
 
 mcp = FastMCP(name="FinOpsHubMCP")
 
-query_library_plugin = QueryLibraryPlugin(embeddings_client=embeddings_client)
+from plugins.vectorstore import WeaviateAdapter
+
+vectorstore_adapter = WeaviateAdapter()
+query_library_plugin = QueryLibraryPlugin(embeddings_client=embeddings_client, vectorstore=vectorstore_adapter)
 query_executor_plugin = KustoQueryExecutor(os.getenv("FINOPS_HUB_CLUSTER", None), "Hub")
 advisor_plugin = AzureAdvisorClient()
 
